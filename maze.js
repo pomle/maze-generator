@@ -37,7 +37,7 @@ class PathMaker
                 if (cell) {
                     visited.add(cell);
                     stack.push(cell);
-                    yield cell;
+                    yield {cell, stack};
                 } else {
                     cell = stack.pop();
                 }
@@ -46,6 +46,20 @@ class PathMaker
         }();
     }
 }
+/*
+class PathFinder
+{
+    constructor(maze, start, end)
+    {
+        const branches = [];
+        let cell = maze.getCell(start);
+
+        return function* generator() {
+            while
+
+        }
+    }
+}*/
 
 class Maze
 {
@@ -119,15 +133,18 @@ class Painter
     {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
-        this.blockSize = 32;
+        this.blockSize = 16;
+
+        this.colorCache = {};
     }
     drawMaze(maze)
     {
         const w = this.canvas.width;
         const h = this.canvas.height;
         const ctx = this.ctx;
-        ctx.fillStyle = '#FFF';
+        this.setColor({r: 255, g: 255, b: 255});
         ctx.fillRect(0, 0, w, h);
+        this.setColor({r: 160, g: 100, b: 200});
         maze.cells.forEach(cell => {
             this.drawCell(cell);
         });
@@ -142,16 +159,33 @@ class Painter
         const y1 = cell.pos.y * B;
         const y2 = (cell.pos.y + cell.dir.y) * B;
 
-        this.ctx.fillStyle = '#000';
         this.ctx.fillRect(Bh + Math.min(x1, x2) - Bh, Bh + Math.min(y1, y2) - Bh,
                           Math.abs(x1 - x2) + Bh, Math.abs(y1 - y2) + Bh);
     }
+    getColor(hue)
+    {
+        const cycle = hue % 60;
+        if (!this.colorCache[cycle]) {
+            const frequency = .2;
+            const r = Math.sin(frequency * cycle + 0) * 127 + 128;
+            const g = Math.sin(frequency * cycle + 2) * 127 + 128;
+            const b = Math.sin(frequency * cycle + 4) * 127 + 128;
+            this.colorCache[cycle] = {r,g,b};
+        }
+        return this.colorCache[cycle];
+    }
+    setColor(col)
+    {
+        this.ctx.fillStyle = 'rgb('
+            + col.r.toFixed() + ','
+            + col.g.toFixed() + ','
+            + col.b.toFixed() + ')';
+    }
 }
 
-const maze = new Maze({x: 32, y: 24});
+const maze = new Maze({x: 80, y: 80});
 const generator = new PathMaker(maze);
 const painter = new Painter(document.getElementById('maze'));
-
 painter.drawMaze(maze);
 
 let speed = 1/25;
@@ -159,7 +193,9 @@ function paint() {
     const res = generator.next();
     if (!res.done) {
         setTimeout(paint, speed * 1000);
-        painter.drawCell(res.value);
+        const col = painter.getColor(res.value.stack.length);
+        painter.setColor(col);
+        painter.drawCell(res.value.cell);
     }
 }
 paint();
